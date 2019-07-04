@@ -266,6 +266,7 @@ public class SyncManager {
 
         SyncSession session = sessions.get(syncConfiguration.getPath());
         if (session == null) {
+            RealmLog.debug("Creating session for: %s", syncConfiguration.getPath());
             session = new SyncSession(syncConfiguration);
             sessions.put(syncConfiguration.getPath(), session);
             if (sessions.size() == 1) {
@@ -437,12 +438,13 @@ public class SyncManager {
         if (syncConfiguration == null) {
             throw new IllegalArgumentException("A non-empty 'syncConfiguration' is required.");
         }
+        RealmLog.debug("Removing session for: %s", syncConfiguration.getPath());
         SyncSession syncSession = sessions.remove(syncConfiguration.getPath());
         if (syncSession != null) {
             syncSession.close();
         }
         if (sessions.isEmpty()) {
-            RealmLog.debug("last session dropped, remove network listener");
+            RealmLog.debug("Last session dropped. Remove network listener.");
             NetworkStateReceiver.removeListener(networkListener);
         }
     }
@@ -592,6 +594,21 @@ public class SyncManager {
             }
         }
         return null;
+    }
+
+    /**
+     * Realm will automatically detect when a device gets connectivity after being offline and
+     * resume syncing.
+     * <p>
+     * However, as some of these checks are performed using incremental backoff, this will in some
+     * cases not happen immediately.
+     * <p>
+     * In those cases it can be beneficial to call this method manually, which will force all
+     * sessions to attempt to reconnect immediately and reset any timers they are using for
+     * incremental backoff.
+     */
+    public static void refreshConnections() {
+        notifyNetworkIsBack();
     }
 
     // Holds the certificate chain (per hostname). We need to keep the order of each certificate
